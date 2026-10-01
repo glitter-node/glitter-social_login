@@ -1,0 +1,55 @@
+{
+    "schema_version": "1.0",
+    "generated_at": "2026-09-29T06:46:47+00:00",
+    "generator": "g7 vendor-bundle:build",
+    "target": "plugin:glitter-social_login",
+    "composer_json_sha256": "3d4f936e63360d2b6726d71a129e6dac523f1d7dbf424201321c29b8d0fb8b9e",
+    "composer_lock_sha256": "37c6ca454c4f1d4f41329eaccd4247ea2dbc37e7e768237cd4fb6b70b2a81b98",
+    "zip_sha256": "a453d28d8e28a1e1e8e1aa3d2c3669c026ac31f1a48a4c644e939f780fa58fbe",
+    "zip_size": 940999,
+    "package_count": 8,
+    "php_requirement": "^8.2",
+    "g7_version": "7.0.11",
+    "packages": [
+        {
+            "name": "firebase/php-jwt",
+            "version": "v7.1.1",
+            "type": "library"
+        },
+        {
+            "name": "laravel/socialite",
+            "version": "v5.31.0",
+            "type": "library"
+        },
+        {
+            "name": "league/oauth1-client",
+            "version": "v1.11.0",
+            "type": "library"
+        },
+        {
+            "name": "paragonie/constant_time_encoding",
+            "version": "v3.1.3",
+            "type": "library"
+        },
+        {
+            "name": "phpseclib/phpseclib",
+            "version": "4.0.1",
+            "type": "library"
+        },
+        {
+            "name": "socialiteproviders/kakao",
+            "version": "4.3.0",
+            "type": "library"
+        },
+        {
+            "name": "socialiteproviders/manager",
+            "version": "4.9.2",
+            "type": "library"
+        },
+        {
+            "name": "symfony/polyfill-php82",
+            "version": "v1.38.1",
+            "type": "library"
+        }
+    ]
+}

@@ -1,0 +1,26 @@
+{
+    "identifier": "glitter-social_login",
+    "vendor": "Glitter.kr",
+    "name": {
+        "ko": "Glitter 소셜 로그인",
+        "en": "Glitter Social Login"
+    },
+    "version": "1.5.1",
+    "license": "MIT",
+    "description": {
+        "ko": "NAVER, 카카오, 구글, Facebook, GitHub 계정을 이용한 소셜 로그인을 제공합니다.",
+        "en": "Provides social login with Naver, Kakao, Google, Facebook, and GitHub accounts."
+    },
+    "g7_version": ">=7.0.10",
+    "dependencies": {
+        "modules": {},
+        "plugins": {}
+    },
+    "assets": {
+        "handlers": false
+    },
+    "loading": {
+        "strategy": "global",
+        "priority": 100
+    }
+}

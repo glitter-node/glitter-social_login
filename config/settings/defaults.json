@@ -1,0 +1,41 @@
+{
+    "_meta": {
+        "version": "1.0.0",
+        "description": "NAVER/카카오/구글/Facebook 소셜 로그인 앱 키"
+    },
+    "defaults": {
+        "naver_enabled": false,
+        "naver_client_id": "",
+        "naver_client_secret": "",
+        "kakao_enabled": false,
+        "kakao_client_id": "",
+        "kakao_client_secret": "",
+        "google_enabled": false,
+        "google_client_id": "",
+        "google_client_secret": "",
+        "facebook_enabled": false,
+        "facebook_client_id": "",
+        "facebook_client_secret": "",
+        "github_enabled": false,
+        "github_client_id": "",
+        "github_client_secret": "",
+        "provider_order": ["naver", "kakao", "google", "facebook", "github"]
+    },
+    "frontend_schema": {
+        "naver_enabled": { "expose": true },
+        "naver_client_id": { "expose": false },
+        "naver_client_secret": { "expose": false },
+        "kakao_enabled": { "expose": true },
+        "kakao_client_id": { "expose": false },
+        "kakao_client_secret": { "expose": false },
+        "google_enabled": { "expose": true },
+        "google_client_id": { "expose": false },
+        "google_client_secret": { "expose": false },
+        "facebook_enabled": { "expose": true },
+        "facebook_client_id": { "expose": false },
+        "facebook_client_secret": { "expose": false },
+        "github_enabled": { "expose": true },
+        "github_client_id": { "expose": false },
+        "github_client_secret": { "expose": false }
+    }
+}
