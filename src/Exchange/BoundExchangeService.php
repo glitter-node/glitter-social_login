@@ -4,6 +4,7 @@ namespace Plugins\Glitter\SocialLogin\Exchange;
 
 use App\Models\User;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 use Plugins\Glitter\SocialLogin\Models\SocialLoginExchange;
 use Plugins\Glitter\SocialLogin\Support\RedirectPath;
 
@@ -52,6 +53,34 @@ final class BoundExchangeService
 
         $codeHash = $this->hash($code);
         $now = now();
+        $existing = SocialLoginExchange::query()
+            ->where('code_hash', $codeHash)
+            ->first();
+
+        if (! $existing) {
+            $this->logConsumeFailure('code_not_found');
+
+            return null;
+        }
+
+        if ($existing->consumed_at !== null) {
+            $this->logConsumeFailure('already_consumed');
+
+            return null;
+        }
+
+        if ($existing->expires_at !== null && $existing->expires_at->lt($now)) {
+            $this->logConsumeFailure('expired');
+
+            return null;
+        }
+
+        if (! hash_equals((string) $existing->session_binding_hash, $this->hash($sessionBinding))) {
+            $this->logConsumeFailure('session_binding_mismatch');
+
+            return null;
+        }
+
         $affected = SocialLoginExchange::query()
             ->where('code_hash', $codeHash)
             ->whereNull('consumed_at')
@@ -63,6 +92,10 @@ final class BoundExchangeService
             ]);
 
         if ($affected !== 1) {
+            // The conditional UPDATE remains authoritative. A concurrent request
+            // may have consumed the row after the diagnostic preflight above.
+            $this->logConsumeFailure('atomic_consume_race');
+
             return null;
         }
 
@@ -88,5 +121,13 @@ final class BoundExchangeService
     private function hash(string $value): string
     {
         return hash('sha256', $value);
+    }
+
+    private function logConsumeFailure(string $reason): void
+    {
+        Log::notice('glitter-social_login: exchange consume rejected', [
+            'action' => 'exchange_consume',
+            'reason' => $reason,
+        ]);
     }
 }

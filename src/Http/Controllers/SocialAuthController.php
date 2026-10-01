@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\Cookie;
 use Plugins\Glitter\SocialLogin\Auth\SocialTwoFactorService;
 use Plugins\Glitter\SocialLogin\Auth\SocialLoginEligibility;
 use Plugins\Glitter\SocialLogin\Linking\SocialLinkingService;
@@ -25,6 +26,8 @@ class SocialAuthController extends Controller
     private const SESSION_LINK_NONCE = 'g7sl.link_nonce';
 
     private const SESSION_EXCHANGE_BINDING = 'g7sl.exchange_binding';
+
+    private const COOKIE_EXCHANGE_BINDING = 'g7sl_exchange_binding';
 
     public function __construct(
         private readonly SocialAuthService $service,
@@ -51,13 +54,17 @@ class SocialAuthController extends Controller
         }
 
         $request->session()->put(self::SESSION_REDIRECT, RedirectPath::sanitize($request->query('redirect')));
-        $request->session()->put(self::SESSION_EXCHANGE_BINDING, Str::random(64));
+        $binding = Str::random(64);
+        $request->session()->put(self::SESSION_EXCHANGE_BINDING, $binding);
 
         // 연동 대상 회원은 쿼리에서 읽지 않는다. `linkPrepare`(auth:sanctum)가 이미 세션에
         // 심어둔 값만 쓴다 — 쿼리로 받으면 남이 만든 링크로 대상을 지정할 수 있게 된다.
         // 세션에 값이 없으면 그대로 로그인 흐름이다.
 
-        return $driver->redirect();
+        // OAuth 왕복 중 session ID가 재발급되거나 session cookie가 재설정되어도
+        // 같은 브라우저의 binding을 보존한다. 값 자체는 Laravel encrypted,
+        // HttpOnly cookie로 전달하고 DB에는 기존처럼 hash만 저장한다.
+        return $driver->redirect()->withCookie($this->exchangeBindingCookie($binding));
     }
 
     public function callback(Request $request, string $provider): RedirectResponse
@@ -98,8 +105,8 @@ class SocialAuthController extends Controller
 
         // 정상 login exchange 는 OAuth 시작 시 만든 browser binding 없이는
         // User resolution/신규 signup side effect까지 진행하지 않는다.
-        $binding = $request->session()->get(self::SESSION_EXCHANGE_BINDING);
-        if (! is_string($binding) || $binding === '') {
+        $binding = $this->resolveExchangeBinding($request);
+        if ($binding === null) {
             return $this->frontendLoginError('login_failed');
         }
 
@@ -188,9 +195,8 @@ class SocialAuthController extends Controller
     public function exchange(Request $request): JsonResponse
     {
         $validated = $request->validate(['code' => ['required', 'string', 'max:128']]);
-        $binding = $request->session()->get(self::SESSION_EXCHANGE_BINDING);
-
-        if (! is_string($binding) || $binding === '') {
+        $binding = $this->resolveExchangeBinding($request);
+        if ($binding === null) {
             return response()->json(['message' => __('auth.login_failed')], 422);
         }
 
@@ -226,7 +232,7 @@ class SocialAuthController extends Controller
             'data' => (new UserResource($user))->toAuthArray($request),
             'token' => $result['token'],
             'redirect_path' => RedirectPath::sanitize($result['redirect_path']),
-        ]);
+        ])->withCookie(cookie()->forget(self::COOKIE_EXCHANGE_BINDING));
     }
 
     public function completeTwoFactor(Request $request): JsonResponse
@@ -235,9 +241,8 @@ class SocialAuthController extends Controller
             'pending_id' => ['required', 'string', 'max:128'],
             'code' => ['required', 'string', 'min:4', 'max:16'],
         ]);
-        $binding = $request->session()->get(self::SESSION_EXCHANGE_BINDING);
-
-        if (! is_string($binding) || $binding === '') {
+        $binding = $this->resolveExchangeBinding($request);
+        if ($binding === null) {
             return response()->json(['message' => __('auth.login_failed')], 422);
         }
 
@@ -302,8 +307,8 @@ class SocialAuthController extends Controller
             return response()->json(['message' => __('glitter-social_login::messages.registration_failed')], 422);
         }
 
-        $binding = $request->session()->get(self::SESSION_EXCHANGE_BINDING);
-        if (! is_string($binding) || $binding === '') {
+        $binding = $this->resolveExchangeBinding($request);
+        if ($binding === null) {
             return response()->json(['message' => __('glitter-social_login::messages.registration_failed')], 422);
         }
 
@@ -331,8 +336,8 @@ class SocialAuthController extends Controller
             return response()->json(['message' => __('glitter-social_login::messages.registration_failed')], 422);
         }
 
-        $binding = $request->session()->get(self::SESSION_EXCHANGE_BINDING);
-        if (! is_string($binding) || $binding === '') {
+        $binding = $this->resolveExchangeBinding($request);
+        if ($binding === null) {
             return response()->json(['message' => __('glitter-social_login::messages.registration_failed')], 422);
         }
 
@@ -465,5 +470,40 @@ class SocialAuthController extends Controller
     private function frontendProfileError(string $key): RedirectResponse
     {
         return redirect('/mypage/profile?'.http_build_query(['social_link' => 'error', 'social_error' => $key]));
+    }
+
+    private function resolveExchangeBinding(Request $request): ?string
+    {
+        $sessionBinding = $request->session()->get(self::SESSION_EXCHANGE_BINDING);
+        $cookieBinding = $request->cookie(self::COOKIE_EXCHANGE_BINDING);
+
+        if (is_string($sessionBinding) && $sessionBinding !== '') {
+            if (is_string($cookieBinding)
+                && $cookieBinding !== ''
+                && ! hash_equals($sessionBinding, $cookieBinding)) {
+                return null;
+            }
+
+            return $sessionBinding;
+        }
+
+        return is_string($cookieBinding) && $cookieBinding !== ''
+            ? $cookieBinding
+            : null;
+    }
+
+    private function exchangeBindingCookie(string $binding): Cookie
+    {
+        return cookie(
+            self::COOKIE_EXCHANGE_BINDING,
+            $binding,
+            10,
+            config('session.path', '/'),
+            config('session.domain'),
+            (bool) config('session.secure', false),
+            true,
+            false,
+            config('session.same_site', 'lax'),
+        );
     }
 }

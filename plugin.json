@@ -5,7 +5,7 @@
         "ko": "Glitter 소셜 로그인",
         "en": "Glitter Social Login"
     },
-    "version": "1.5.1",
+    "version": "1.5.2",
     "license": "MIT",
     "description": {
         "ko": "NAVER, 카카오, 구글, Facebook, GitHub 계정을 이용한 소셜 로그인을 제공합니다.",
